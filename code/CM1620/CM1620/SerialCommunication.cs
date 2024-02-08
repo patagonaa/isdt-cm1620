@@ -16,6 +16,7 @@ namespace CM1620
                 Encoding = Encoding.ASCII,
                 ReadTimeout = 1000,
                 WriteTimeout = 1000,
+                BaudRate = 250000
             };
             _serialPort.Open();
         }
