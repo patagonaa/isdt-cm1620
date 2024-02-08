@@ -70,11 +70,20 @@ namespace CM1620
                 throw new Cm1620Exception("empty response");
 
             var splitResponseLine = lines[0].Split(' ', 2);
-            var responseCmd = splitResponseLine[0];
+
+            var responseCmdLine = splitResponseLine[0];
+
+            // In some cases, via RS485 we get "?@command" instead of "@command".
+            // That might be due to interference or an actual transmission issue.
+            // Either way, skipping until the "@" makes it more reliable.
+            var atPosition = responseCmdLine.IndexOf('@');
+            if (atPosition == -1)
+                throw new Cm1620Exception($"invalid response cmd line {responseCmdLine}");
+            var responseCmd = responseCmdLine[atPosition..];
 
             if (responseCmd.Equals("@confused"))
                 throw new Cm1620ConfusedException($"request: {commandStr}{Environment.NewLine}response: {responseCmd}{Environment.NewLine}expected: @{command}");
-            if (!splitResponseLine[0].Equals($"@{command}", StringComparison.OrdinalIgnoreCase))
+            if (!responseCmd.Equals($"@{command}", StringComparison.OrdinalIgnoreCase))
                 throw new Cm1620Exception($"request: {commandStr}{Environment.NewLine}response: {responseCmd}{Environment.NewLine}expected: @{command}");
 
             var status = splitResponseLine.Length > 1 ? splitResponseLine[1] : null;
