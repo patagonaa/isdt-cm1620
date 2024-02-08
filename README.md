@@ -47,8 +47,11 @@ In theory, that limit could easily be patched out by modifying two bytes in the 
     - probably Bluetooth serial or similar ASCII-based profile using the ASCII serial protocol
 - RS485
     - used for the optional controller and communication between multiple chargers (for parallel use)
-    - undocumented, but probably uses the same/similar protocol as USB/BT
-    - uses USB-C sockets, likely using D+ and D- for RS485, however polarity, baud rate etc. are currently unclear
+    - uses the USB-C D+ and D- pins (D+ is A, D- is B) at 250000 baud 8N1
+    - has something connected to the CC pins, however it's unclear what it's used for
+    - "Host" port can be used to communicate in the same way as Micro USB
+    - "Ext" port doesn't respond to commands
+    - "Slave" port repeatedly sends `#hello SL1` to find the next charger in the chain
 - CAN
     - as far as we can tell, the CAN support is just a plain lie. There does not seem to be CAN support in the firmware and a CAN transceiver is nowhere to be found on the PCB. 
     - But there is an unpopulated SOIC-8 footprint besides the RS485 transceiver for the "EXT" port, that matches the generic CAN-transceiver pinout. So they at least seem to have planned for CAN support.
