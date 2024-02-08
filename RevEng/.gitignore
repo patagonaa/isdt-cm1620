@@ -1,0 +1,7 @@
+# Ghidra
+*.lock
+*.lock~
+*.ps
+
+
+*.psd
