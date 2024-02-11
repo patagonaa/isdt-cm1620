@@ -44,7 +44,7 @@ In theory, that limit could easily be patched out by modifying two bytes in the 
     - documented ASCII serial protocol with example code
 - Bluetooth
     - For use with "ISD Go" app
-    - probably Bluetooth serial or similar ASCII-based profile using the ASCII serial protocol
+    - Completely different binary-based BLE protocol (could likely be reverse engineered from the app if needed)
 - RS485
     - used for the optional controller and communication between multiple chargers (for parallel use)
     - uses the USB-C D+ and D- pins (D+ is A, D- is B) at 250000 baud 8N1
