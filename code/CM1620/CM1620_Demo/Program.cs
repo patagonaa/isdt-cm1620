@@ -25,15 +25,16 @@ namespace CM1620_Demo
 
             while (!cts.IsCancellationRequested)
             {
-                var response = await link.StatusQuery().SingleAsync(x => x.Slave == "SL0");
+                var response = await link.StatusQuery();
+                var mainDevStatus = response.DeviceStatus.Single(x => x.Slave == "SL0");
                 Console.WriteLine(
-                    $"In: {response.InputVoltage,4:0.0}V {response.ChargeStatus?.InputPower ?? 0,4:0}W  " +
-                    $"Out: {response.OutputVoltage,4:0.0}V {response.ChargeStatus?.OutputCurrent ?? 0,4:0.0}A  " +
-                    $"State: {response.ChargeStatus?.TimeCharged ?? TimeSpan.Zero,8} {response.ChargeStatus?.CapacityChargedMah??0,6:0}mAh {response.BatteryPercent,3:0}% {response.Temperature,2:0}°C {response.ChargingStage,14} Err:{response.ErrorCode}");
+                    $"In: {mainDevStatus.InputVoltage,4:0.0}V {response.ChargeStatus?.InputPower ?? 0,4:0}W  " +
+                    $"Out: {mainDevStatus.OutputVoltage,4:0.0}V {response.ChargeStatus?.OutputCurrent ?? 0,4:0.0}A  " +
+                    $"State: {response.ChargeStatus?.TimeCharged ?? TimeSpan.Zero,8} {response.ChargeStatus?.CapacityChargedMah??0,6:0}mAh {mainDevStatus.BatteryPercent,3:0}% {mainDevStatus.Temperature,2:0}°C {response.ChargingStage,14} Err:{mainDevStatus.ErrorCode}");
                 await Task.Delay(1000);
             }
 
-            //await link.StopCommand();
+            await link.StopCommand();
         }
     }
 }

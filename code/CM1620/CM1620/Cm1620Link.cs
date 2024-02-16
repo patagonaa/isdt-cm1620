@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 using CM1620.Models;
+using CM1620.Models.StatusQuery;
 
 namespace CM1620
 {
@@ -92,84 +93,112 @@ namespace CM1620
             }
         }
 
-        public async IAsyncEnumerable<StatusQueryResponse> StatusQuery()
+        public async Task<StatusQueryResponse> StatusQuery()
         {
             var response = await _communication.SendCommand("status");
 
+            ChargingStage? chargingStage = null;
+            ChargeStatus? chargeStatus = null;
+            var devices = new List<StatusQueryDeviceStatus>();
+
             for (int i = 0; i < response.AdditionalLines.Length; i++)
             {
-                var statusLineMatch = StatusResponseRegex().Match(response.AdditionalLines[i]);
-                if (!statusLineMatch.Success)
-                    throw new Cm1620Exception($"Invalid status line {response.AdditionalLines[i]}");
-                var balMode = statusLineMatch.Groups["balmode"].Value;
-                var chargeStage = Enum.Parse<ChargingStage>(statusLineMatch.Groups["chargemode"].Value, true);
-
-                ChargeStatus? chargeStatus = null;
-
-                switch (chargeStage)
+                var (devStage, devStatus, devChargeStatus) = ReadDeviceStatusQuery(response.AdditionalLines, ref i);
+                if (devStatus.Slave.Equals("SL0", StringComparison.InvariantCulture))
                 {
-                    case ChargingStage.Standby:
-                    case ChargingStage.Abnormal:
-                    case ChargingStage.ParallelChging:
-                        break;
-
-                    case ChargingStage.Activate:
-                    case ChargingStage.CurrentClimb:
-                    case ChargingStage.ConstCurChging:
-                    case ChargingStage.ConstVolChging:
-                    case ChargingStage.NormalEnd:
-                    case ChargingStage.Trickling:
-                        i++;
-                        var chargeStatusMatch = StatusResponseChargeRegex().Match(response.AdditionalLines[i]);
-                        if (!chargeStatusMatch.Success)
-                            throw new Cm1620Exception($"Invalid charge status line {response.AdditionalLines[i]}");
-                        chargeStatus = new ChargeStatus(
-                            decimal.Parse(chargeStatusMatch.Groups["taskcurrent"].Value, CultureInfo.InvariantCulture),
-                            decimal.Parse(chargeStatusMatch.Groups["inputpower"].Value, CultureInfo.InvariantCulture),
-                            decimal.Parse(chargeStatusMatch.Groups["outputcurrent"].Value, CultureInfo.InvariantCulture),
-                            decimal.Parse(chargeStatusMatch.Groups["chargecapacity"].Value, CultureInfo.InvariantCulture),
-                            TimeSpan.Parse(chargeStatusMatch.Groups["time"].Value, CultureInfo.InvariantCulture)
-                            );
-                        break;
-                    default:
-                        throw new InvalidOperationException("Invalid charge mode");
+                    chargingStage = devStage;
+                    chargeStatus = devChargeStatus;
                 }
-
-                decimal[]? cellVoltages = null;
-                decimal[]? cellResistancesMilliOhm = null;
-
-                switch (balMode)
+                else
                 {
-                    case "UBL":
-                        break;
-                    case "BV":
-                        i++;
-                        cellVoltages = response.AdditionalLines[i].Split(' ').Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-                        break;
-                    case "BVR":
-                        i++;
-                        cellVoltages = response.AdditionalLines[i].Split(' ').Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-                        i++;
-                        cellResistancesMilliOhm = response.AdditionalLines[i].Split(' ').Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-                        break;
-                    default:
-                        throw new InvalidOperationException("Invalid balance mode");
+                    if (devStage != ChargingStage.Standby && devStage != ChargingStage.ParallelChging && devStage != ChargingStage.Abnormal)
+                        throw new Cm1620Exception($"Invalid ChargingState {chargingStage} for subdevice");
                 }
-
-                yield return new StatusQueryResponse(
-                    statusLineMatch.Groups["slave"].Value,
-                    decimal.Parse(statusLineMatch.Groups["inputv"].Value, CultureInfo.InvariantCulture),
-                    decimal.Parse(statusLineMatch.Groups["outputv"].Value, CultureInfo.InvariantCulture),
-                    decimal.Parse(statusLineMatch.Groups["temp"].Value, CultureInfo.InvariantCulture),
-                    statusLineMatch.Groups["battgo"].Value.Equals("Y", StringComparison.OrdinalIgnoreCase),
-                    decimal.Parse(statusLineMatch.Groups["percent"].Value, CultureInfo.InvariantCulture),
-                    (ChargeErrorCode)int.Parse(statusLineMatch.Groups["error"].Value, CultureInfo.InvariantCulture),
-                    chargeStage,
-                    chargeStatus,
-                    cellVoltages,
-                    cellResistancesMilliOhm
-                    );
+                devices.Add(devStatus);
             }
+
+            if (chargingStage == null)
+                throw new Cm1620Exception($"No main device in response");
+
+            return new StatusQueryResponse(chargingStage.Value, chargeStatus, devices.ToArray());
+        }
+
+        private static (ChargingStage Stage, StatusQueryDeviceStatus DeviceStatus, ChargeStatus? ChargeStatus) ReadDeviceStatusQuery(string[] lines, ref int offset)
+        {
+            var statusLineMatch = StatusResponseRegex().Match(lines[offset]);
+            if (!statusLineMatch.Success)
+                throw new Cm1620Exception($"Invalid status line {lines[offset]}");
+            var balMode = statusLineMatch.Groups["balmode"].Value;
+            var chargeStage = Enum.Parse<ChargingStage>(statusLineMatch.Groups["chargemode"].Value, true);
+
+            ChargeStatus? chargeStatus = null;
+
+            switch (chargeStage)
+            {
+                case ChargingStage.Standby:
+                case ChargingStage.Abnormal:
+                case ChargingStage.ParallelChging:
+                    break;
+
+                case ChargingStage.Activate:
+                case ChargingStage.CurrentClimb:
+                case ChargingStage.ConstCurChging:
+                case ChargingStage.ConstVolChging:
+                case ChargingStage.NormalEnd:
+                case ChargingStage.Trickling:
+                    offset++;
+                    var chargeStatusMatch = StatusResponseChargeRegex().Match(lines[offset]);
+                    if (!chargeStatusMatch.Success)
+                        throw new Cm1620Exception($"Invalid charge status line {lines[offset]}");
+                    chargeStatus = new ChargeStatus(
+                        decimal.Parse(chargeStatusMatch.Groups["taskcurrent"].Value, CultureInfo.InvariantCulture),
+                        decimal.Parse(chargeStatusMatch.Groups["inputpower"].Value, CultureInfo.InvariantCulture),
+                        decimal.Parse(chargeStatusMatch.Groups["outputcurrent"].Value, CultureInfo.InvariantCulture),
+                        int.Parse(chargeStatusMatch.Groups["chargecapacity"].Value, CultureInfo.InvariantCulture),
+                        TimeSpan.Parse(chargeStatusMatch.Groups["time"].Value, CultureInfo.InvariantCulture)
+                        );
+                    break;
+                default:
+                    throw new InvalidOperationException("Invalid charge mode");
+            }
+
+            decimal[]? cellVoltages = null;
+            decimal[]? cellResistancesMilliOhm = null;
+
+            switch (balMode)
+            {
+                case "UBL":
+                    break;
+                case "BV":
+                    offset++;
+                    cellVoltages = lines[offset].Split(' ').Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+                    break;
+                case "BVR":
+                    offset++;
+                    cellVoltages = lines[offset].Split(' ').Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+                    offset++;
+                    cellResistancesMilliOhm = lines[offset].Split(' ').Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+                    break;
+                default:
+                    throw new InvalidOperationException("Invalid balance mode");
+            }
+
+            return
+                (
+                    chargeStage,
+                    new StatusQueryDeviceStatus(
+                        statusLineMatch.Groups["slave"].Value,
+                        decimal.Parse(statusLineMatch.Groups["inputv"].Value, CultureInfo.InvariantCulture),
+                        decimal.Parse(statusLineMatch.Groups["outputv"].Value, CultureInfo.InvariantCulture),
+                        int.Parse(statusLineMatch.Groups["temp"].Value, CultureInfo.InvariantCulture),
+                        statusLineMatch.Groups["battgo"].Value.Equals("Y", StringComparison.OrdinalIgnoreCase),
+                        int.Parse(statusLineMatch.Groups["percent"].Value, CultureInfo.InvariantCulture),
+                        (ChargeErrorCode)int.Parse(statusLineMatch.Groups["error"].Value, CultureInfo.InvariantCulture),
+                        cellVoltages,
+                        cellResistancesMilliOhm
+                    ),
+                    chargeStatus
+                );
         }
 
         public async Task<ChargeCommandResponse> ChargeCommand(ChargeTask task)

@@ -2,6 +2,7 @@ using CM1620;
 using CM1620.Models;
 using Moq;
 using NUnit.Framework;
+using System.Globalization;
 
 namespace CM1620_Tests
 {
@@ -57,12 +58,26 @@ namespace CM1620_Tests
 
             var sut = new Cm1620Link(comm.Object);
 
-            var results = await sut.StatusQuery().ToListAsync();
+            var result = await sut.StatusQuery();
 
-            Assert.That(results, Has.Count.EqualTo(3));
             Assert.Multiple(() =>
             {
-                var response = results[0];
+                Assert.That(result.ChargingStage, Is.EqualTo(ChargingStage.ConstCurChging));
+
+                Assert.That(result.ChargeStatus, Is.Not.Null);
+                var chargeStatus = result.ChargeStatus!;
+                Assert.That(chargeStatus.TaskCurrent, Is.EqualTo(40));
+                Assert.That(chargeStatus.InputPower, Is.EqualTo(1000));
+                Assert.That(chargeStatus.OutputCurrent, Is.EqualTo(39.9m));
+                Assert.That(chargeStatus.CapacityChargedMah, Is.EqualTo(15200));
+                Assert.That(chargeStatus.TimeCharged, Is.EqualTo(TimeSpan.FromSeconds(30)));
+            });
+
+            Assert.That(result.DeviceStatus, Has.Length.EqualTo(3));
+
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[0];
                 Assert.That(response.Slave, Is.EqualTo("SL0"));
                 Assert.That(response.InputVoltage, Is.EqualTo(32m));
                 Assert.That(response.OutputVoltage, Is.EqualTo(24m));
@@ -70,15 +85,6 @@ namespace CM1620_Tests
                 Assert.That(response.BattGo, Is.False);
                 Assert.That(response.BatteryPercent, Is.EqualTo(85));
                 Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
-                Assert.That(response.ChargingStage, Is.EqualTo(ChargingStage.ConstCurChging));
-
-                Assert.That(response.ChargeStatus, Is.Not.Null);
-                var chargeStatus = response.ChargeStatus!;
-                Assert.That(chargeStatus.TaskCurrent, Is.EqualTo(40));
-                Assert.That(chargeStatus.InputPower, Is.EqualTo(1000));
-                Assert.That(chargeStatus.OutputCurrent, Is.EqualTo(39.9));
-                Assert.That(chargeStatus.CapacityChargedMah, Is.EqualTo(15200));
-                Assert.That(chargeStatus.TimeCharged, Is.EqualTo(TimeSpan.FromSeconds(30)));
 
                 Assert.That(response.CellVoltages, Is.Null);
                 Assert.That(response.CellResistancesMilliOhm, Is.Null);
@@ -86,7 +92,7 @@ namespace CM1620_Tests
 
             Assert.Multiple(() =>
             {
-                var response = results[1];
+                var response = result.DeviceStatus[1];
                 Assert.That(response.Slave, Is.EqualTo("SL1"));
                 Assert.That(response.InputVoltage, Is.EqualTo(32m));
                 Assert.That(response.OutputVoltage, Is.EqualTo(24m));
@@ -94,12 +100,14 @@ namespace CM1620_Tests
                 Assert.That(response.BattGo, Is.False);
                 Assert.That(response.BatteryPercent, Is.EqualTo(85));
                 Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
-                Assert.That(response.ChargingStage, Is.EqualTo(ChargingStage.ParallelChging));
+
+                Assert.That(response.CellVoltages, Is.Null);
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
             });
 
             Assert.Multiple(() =>
             {
-                var response = results[2];
+                var response = result.DeviceStatus[2];
                 Assert.That(response.Slave, Is.EqualTo("SL2"));
                 Assert.That(response.InputVoltage, Is.EqualTo(32m));
                 Assert.That(response.OutputVoltage, Is.EqualTo(24m));
@@ -107,7 +115,9 @@ namespace CM1620_Tests
                 Assert.That(response.BattGo, Is.False);
                 Assert.That(response.BatteryPercent, Is.EqualTo(85));
                 Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
-                Assert.That(response.ChargingStage, Is.EqualTo(ChargingStage.ParallelChging));
+
+                Assert.That(response.CellVoltages, Is.Null);
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
             });
         }
 
@@ -122,8 +132,7 @@ namespace CM1620_Tests
                 "3.785 3.785 3.785 3.785 3.785 3.785 3.785 3.785 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0",
                 "3.6 3.6 3.6 3.6 3.6 3.6 3.6 3.6 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0",
 
-                "SL1 32.0V 24.0V 56C N 100% BV 000 ConstCurChging",
-                "10.0A 400W 9.9A 15200mAh 00:00:30",
+                "SL1 32.0V 24.0V 56C N 100% BV 000 ParallelChging",
                 "3.785 3.785 3.785 3.785 3.785 3.785 3.785 3.785 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0"
             };
 
@@ -131,12 +140,25 @@ namespace CM1620_Tests
 
             var sut = new Cm1620Link(comm.Object);
 
-            var results = await sut.StatusQuery().ToListAsync();
+            var result = await sut.StatusQuery();
 
-            Assert.That(results, Has.Count.EqualTo(2));
             Assert.Multiple(() =>
             {
-                var response = results[0];
+                Assert.That(result.ChargingStage, Is.EqualTo(ChargingStage.ConstCurChging));
+
+                Assert.That(result.ChargeStatus, Is.Not.Null);
+                var chargeStatus = result.ChargeStatus!;
+                Assert.That(chargeStatus.TaskCurrent, Is.EqualTo(20));
+                Assert.That(chargeStatus.InputPower, Is.EqualTo(400));
+                Assert.That(chargeStatus.OutputCurrent, Is.EqualTo(19.8));
+                Assert.That(chargeStatus.CapacityChargedMah, Is.EqualTo(15200));
+                Assert.That(chargeStatus.TimeCharged, Is.EqualTo(TimeSpan.FromSeconds(30)));
+            });
+
+            Assert.That(result.DeviceStatus, Has.Length.EqualTo(2));
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[0];
                 Assert.That(response.Slave, Is.EqualTo("SL0"));
                 Assert.That(response.InputVoltage, Is.EqualTo(32m));
                 Assert.That(response.OutputVoltage, Is.EqualTo(24m));
@@ -144,15 +166,6 @@ namespace CM1620_Tests
                 Assert.That(response.BattGo, Is.False);
                 Assert.That(response.BatteryPercent, Is.EqualTo(85));
                 Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
-                Assert.That(response.ChargingStage, Is.EqualTo(ChargingStage.ConstCurChging));
-
-                Assert.That(response.ChargeStatus, Is.Not.Null);
-                var chargeStatus = response.ChargeStatus!;
-                Assert.That(chargeStatus.TaskCurrent, Is.EqualTo(20));
-                Assert.That(chargeStatus.InputPower, Is.EqualTo(400));
-                Assert.That(chargeStatus.OutputCurrent, Is.EqualTo(19.8m));
-                Assert.That(chargeStatus.CapacityChargedMah, Is.EqualTo(15200));
-                Assert.That(chargeStatus.TimeCharged, Is.EqualTo(TimeSpan.FromSeconds(30)));
 
                 Assert.That(response.CellVoltages, Is.Not.Null);
                 CollectionAssert.AreEqual(response.CellVoltages, new[] { 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m });
@@ -163,7 +176,7 @@ namespace CM1620_Tests
 
             Assert.Multiple(() =>
             {
-                var response = results[1];
+                var response = result.DeviceStatus[1];
                 Assert.That(response.Slave, Is.EqualTo("SL1"));
                 Assert.That(response.InputVoltage, Is.EqualTo(32m));
                 Assert.That(response.OutputVoltage, Is.EqualTo(24m));
@@ -171,18 +184,187 @@ namespace CM1620_Tests
                 Assert.That(response.BattGo, Is.False);
                 Assert.That(response.BatteryPercent, Is.EqualTo(100));
                 Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
-                Assert.That(response.ChargingStage, Is.EqualTo(ChargingStage.ConstCurChging));
-
-                Assert.That(response.ChargeStatus, Is.Not.Null);
-                var chargeStatus = response.ChargeStatus!;
-                Assert.That(chargeStatus.TaskCurrent, Is.EqualTo(10));
-                Assert.That(chargeStatus.InputPower, Is.EqualTo(400));
-                Assert.That(chargeStatus.OutputCurrent, Is.EqualTo(9.9m));
-                Assert.That(chargeStatus.CapacityChargedMah, Is.EqualTo(15200));
-                Assert.That(chargeStatus.TimeCharged, Is.EqualTo(TimeSpan.FromSeconds(30)));
 
                 Assert.That(response.CellVoltages, Is.Not.Null);
                 CollectionAssert.AreEqual(response.CellVoltages, new[] { 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 3.785m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m, 0.0m });
+
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task StatusCmd_RealDevice_1()
+        {
+            var comm = new Mock<ICommunication>();
+            var lines = new[] // from real device
+            {
+                "SL0 52.3V 27.6V 37C N 92% UBL 000 ConstCurChging",
+                "33.0A 978W 32.6A 873mAh 00:01:48",
+                "SL1 52.8V 27.6V 37C N 93% UBL 000 ParallelChging",
+            };
+
+            comm.Setup(x => x.SendCommand("status", null)).ReturnsAsync(new IsdtResponse("2", lines));
+
+            var sut = new Cm1620Link(comm.Object);
+
+            var result = await sut.StatusQuery();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.ChargingStage, Is.EqualTo(ChargingStage.ConstCurChging));
+
+                Assert.That(result.ChargeStatus, Is.Not.Null);
+                var chargeStatus = result.ChargeStatus!;
+                Assert.That(chargeStatus.TaskCurrent, Is.EqualTo(33));
+                Assert.That(chargeStatus.InputPower, Is.EqualTo(978));
+                Assert.That(chargeStatus.OutputCurrent, Is.EqualTo(32.6));
+                Assert.That(chargeStatus.CapacityChargedMah, Is.EqualTo(873));
+                Assert.That(chargeStatus.TimeCharged, Is.EqualTo(TimeSpan.Parse("00:01:48", CultureInfo.InvariantCulture)));
+            });
+
+            Assert.That(result.DeviceStatus, Has.Length.EqualTo(2));
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[0];
+                Assert.That(response.Slave, Is.EqualTo("SL0"));
+                Assert.That(response.InputVoltage, Is.EqualTo(52.3m));
+                Assert.That(response.OutputVoltage, Is.EqualTo(27.6m));
+                Assert.That(response.Temperature, Is.EqualTo(37));
+                Assert.That(response.BattGo, Is.False);
+                Assert.That(response.BatteryPercent, Is.EqualTo(92));
+                Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
+
+                Assert.That(response.CellVoltages, Is.Null);
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
+            });
+
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[1];
+                Assert.That(response.Slave, Is.EqualTo("SL1"));
+                Assert.That(response.InputVoltage, Is.EqualTo(52.8m));
+                Assert.That(response.OutputVoltage, Is.EqualTo(27.6m));
+                Assert.That(response.Temperature, Is.EqualTo(37));
+                Assert.That(response.BattGo, Is.False);
+                Assert.That(response.BatteryPercent, Is.EqualTo(93));
+                Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
+
+                Assert.That(response.CellVoltages, Is.Null);
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task StatusCmd_RealDevice_2()
+        {
+            var comm = new Mock<ICommunication>();
+            var lines = new[] // from real device
+            {
+                "SL0 53.5V 26.5V 35C N 62% BV 000 standby",
+                "3.330 3.331 3.336 3.329 3.335 3.331 3.333 3.331 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000",
+                "SL1 53.8V 26.8V 34C N 80% UBL 000 standby",
+            };
+
+            comm.Setup(x => x.SendCommand("status", null)).ReturnsAsync(new IsdtResponse("2", lines));
+
+            var sut = new Cm1620Link(comm.Object);
+
+            var result = await sut.StatusQuery();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.ChargingStage, Is.EqualTo(ChargingStage.Standby));
+                Assert.That(result.ChargeStatus, Is.Null);
+            });
+
+            Assert.That(result.DeviceStatus, Has.Length.EqualTo(2));
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[0];
+                Assert.That(response.Slave, Is.EqualTo("SL0"));
+                Assert.That(response.InputVoltage, Is.EqualTo(53.5m));
+                Assert.That(response.OutputVoltage, Is.EqualTo(26.5m));
+                Assert.That(response.Temperature, Is.EqualTo(35));
+                Assert.That(response.BattGo, Is.False);
+                Assert.That(response.BatteryPercent, Is.EqualTo(62));
+                Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
+
+                Assert.That(response.CellVoltages, Is.Not.Null);
+                CollectionAssert.AreEqual(response.CellVoltages, new[] { 3.330m, 3.331m, 3.336m, 3.329m, 3.335m, 3.331m, 3.333m, 3.331m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m });
+
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
+
+            });
+
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[1];
+                Assert.That(response.Slave, Is.EqualTo("SL1"));
+                Assert.That(response.InputVoltage, Is.EqualTo(53.8m));
+                Assert.That(response.OutputVoltage, Is.EqualTo(26.8m));
+                Assert.That(response.Temperature, Is.EqualTo(34));
+                Assert.That(response.BattGo, Is.False);
+                Assert.That(response.BatteryPercent, Is.EqualTo(80));
+                Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
+
+                Assert.That(response.CellVoltages, Is.Null);
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task StatusCmd_RealDevice_3()
+        {
+            var comm = new Mock<ICommunication>();
+            var lines = new[] // from real device
+            {
+                "SL0 53.8V 26.7V 28C N 0% UBL 000 standby",
+                "SL1 53.5V 26.4V 28C N 2% BV 000 standby",
+                "3.322 3.323 3.326 3.319 3.324 3.322 3.325 3.322 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000",
+            };
+
+            comm.Setup(x => x.SendCommand("status", null)).ReturnsAsync(new IsdtResponse("2", lines));
+
+            var sut = new Cm1620Link(comm.Object);
+
+            var result = await sut.StatusQuery();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.ChargingStage, Is.EqualTo(ChargingStage.Standby));
+                Assert.That(result.ChargeStatus, Is.Null);
+            });
+
+            Assert.That(result.DeviceStatus, Has.Length.EqualTo(2));
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[0];
+                Assert.That(response.Slave, Is.EqualTo("SL0"));
+                Assert.That(response.InputVoltage, Is.EqualTo(53.8m));
+                Assert.That(response.OutputVoltage, Is.EqualTo(26.7m));
+                Assert.That(response.Temperature, Is.EqualTo(28));
+                Assert.That(response.BattGo, Is.False);
+                Assert.That(response.BatteryPercent, Is.EqualTo(0));
+                Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
+
+                Assert.That(response.CellVoltages, Is.Null);
+                Assert.That(response.CellResistancesMilliOhm, Is.Null);
+
+            });
+
+            Assert.Multiple(() =>
+            {
+                var response = result.DeviceStatus[1];
+                Assert.That(response.Slave, Is.EqualTo("SL1"));
+                Assert.That(response.InputVoltage, Is.EqualTo(53.5m));
+                Assert.That(response.OutputVoltage, Is.EqualTo(26.4m));
+                Assert.That(response.Temperature, Is.EqualTo(28));
+                Assert.That(response.BattGo, Is.False);
+                Assert.That(response.BatteryPercent, Is.EqualTo(2));
+                Assert.That(response.ErrorCode, Is.EqualTo(ChargeErrorCode.None));
+
+                Assert.That(response.CellVoltages, Is.Not.Null);
+                CollectionAssert.AreEqual(response.CellVoltages, new[] { 3.322m, 3.323m, 3.326m, 3.319m, 3.324m, 3.322m, 3.325m, 3.322m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m, 0.000m });
 
                 Assert.That(response.CellResistancesMilliOhm, Is.Null);
             });
