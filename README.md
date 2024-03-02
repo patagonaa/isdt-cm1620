@@ -63,7 +63,8 @@ In theory, that limit could easily be patched out by modifying two bytes in the 
     - Completely different binary-based BLE protocol (could likely be reverse engineered from the app if needed)
 - RS485
     - used for the optional controller and communication between multiple chargers (for parallel use)
-    - uses the USB-C D+ and D- pins (D+ is A, D- is B) at 250000 baud 8N1
+    - uses the USB-C D+ and D- pins (D+ is A/+, D- is B/-) at 250000 baud 8N1
+    - needs external pullup on A/+, pulldown on B/- to set proper idle voltages
     - has something connected to the CC pins, however it's unclear what it's used for
     - "Host" port can be used to communicate in the same way as Micro USB
     - "Ext" port doesn't respond to commands

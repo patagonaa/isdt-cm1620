@@ -40,6 +40,8 @@ namespace CM1620
             commandSb.Append("\n\r");
             var commandStr = commandSb.ToString();
             Debug.WriteLine($">{commandStr.Replace("\r", "\\r").Replace("\n", "\\n")}");
+
+            _serialPort.DiscardInBuffer();
             _serialPort.Write(commandStr);
 
             var sb = new StringBuilder();
@@ -64,7 +66,7 @@ namespace CM1620
                 }
             }
 
-            Debug.WriteLine($"<{string.Join("\\n", lines)}\\r");
+            Debug.WriteLine($"<{string.Join("\\n", lines).Replace("\0", "\\0")}\\r");
 
             if (lines.Count == 0)
                 throw new Cm1620Exception("empty response");
@@ -73,16 +75,16 @@ namespace CM1620
 
             var responseCmdLine = splitResponseLine[0];
 
-            // In some cases, via RS485 we get "?@command" instead of "@command".
-            // That might be due to interference or an actual transmission issue.
+            // In some cases, via RS485 we get garbage ("?" or "\0") before the response.
+            // That might be due to interference (usually, when the bus pullup/pulldown is missing).
             // Either way, skipping until the "@" makes it more reliable.
             var atPosition = responseCmdLine.IndexOf('@');
             if (atPosition == -1)
                 throw new Cm1620Exception($"invalid response cmd line {responseCmdLine}");
             var responseCmd = responseCmdLine[atPosition..];
 
-            if (responseCmd.Equals("@confused"))
-                throw new Cm1620ConfusedException($"request: {commandStr}{Environment.NewLine}response: {responseCmd}{Environment.NewLine}expected: @{command}");
+            if (responseCmd.Equals("@confused", StringComparison.OrdinalIgnoreCase))
+                throw new Cm1620ConfusedException($"Got @confused response. Probably Login required. {Environment.NewLine}request: {commandStr}{Environment.NewLine}expected: @{command}");
             if (!responseCmd.Equals($"@{command}", StringComparison.OrdinalIgnoreCase))
                 throw new Cm1620Exception($"request: {commandStr}{Environment.NewLine}response: {responseCmd}{Environment.NewLine}expected: @{command}");
 
