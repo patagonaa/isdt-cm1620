@@ -14,6 +14,22 @@ Official specifications:
 
 Despite its drawbacks (see Reverse Engineering Discoveries), the cheap price might still make this device a useful tool for battery charging.
 
+### Warning about power up sequence!
+
+There is at least one scenario where the CM1620 dies (ask me how I know).
+
+- Two chargers in parallel mode
+    - Grounds connected to PSU
+    - USB-C connected ("Host" port -> "Slave" port)
+    - Main charger connected to PSU
+    - Battery connected (parallel to both)
+- When connecting the positive of the sub-charger (the one hooked up to the "Slave" port of the other charger), magic smoke escapes :(
+
+So I would suggest when using multiple of them in parallel to **always keep the power inputs parallel, especially when a battery is hooked up!**
+IIRC powering up both units at the same time even with the battery hooked up was fine (though I'm not 100% certain).
+
+Powering up a single unit with or without a battery hooked up seems to both be fine as well.
+
 ## Documentation
 There is some official documentation and C# example code on the ISDT website:
 https://www.isdt.co/down/openSource/CM1620.zip
